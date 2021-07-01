@@ -13,13 +13,13 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('.hello'):
+    elif message.content.startswith('!hello'):
         msg = 'Hello {0.author.mention}'.format(message)
         await message.channel.send(msg)
 
-    elif message.content.startswith('.roll'):
+    elif message.content.startswith('!roll'):
         # Remove leading command
-        fullroll = message.content.replace('.roll', '')
+        fullroll = message.content.replace('!roll', '')
         # Remove any whitespace
         fullroll = fullroll.replace(' ', '')
         # Split into parts to be subtracted from each other
