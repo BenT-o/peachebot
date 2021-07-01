@@ -3,9 +3,12 @@ import discord
 import re
 import random
 
-TOKEN = ''
+# TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.Dq-y0A.4Tjypst5ZTWdhdI5cnwzxtIzPqs'
+
+TOKEN = 'NDQ2OTMzMzU5MDMwMTczNjk2.XweDxg.IzcQFiHmGfktLSTnAfWOJi3J8VI'
 
 client = discord.Client()
+
 
 @client.event
 async def on_message(message):
@@ -13,13 +16,13 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    elif message.content.startswith('!hello'):
+    if message.content.startswith('.hello'):
         msg = 'Hello {0.author.mention}'.format(message)
         await message.channel.send(msg)
 
-    elif message.content.startswith('!roll'):
+    elif message.content.startswith('.roll'):
         # Remove leading command
-        fullroll = message.content.replace('!roll', '')
+        fullroll = message.content.replace('.roll', '')
         # Remove any whitespace
         fullroll = fullroll.replace(' ', '')
         # Split into parts to be subtracted from each other
