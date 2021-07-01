@@ -3,12 +3,9 @@ import discord
 import re
 import random
 
-# TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.Dq-y0A.4Tjypst5ZTWdhdI5cnwzxtIzPqs'
-
-TOKEN = 'NDQ2OTMzMzU5MDMwMTczNjk2.XweDxg.IzcQFiHmGfktLSTnAfWOJi3J8VI'
+TOKEN = ''
 
 client = discord.Client()
-
 
 @client.event
 async def on_message(message):
