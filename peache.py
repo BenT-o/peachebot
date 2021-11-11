@@ -97,6 +97,7 @@ async def on_message(message):
         output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
         await message.channel.send(output)
 
+    # <editor-fold desc="Kill Command">
     elif message.content.startswith('!kill'):
         message.content = message.content.replace('!kill', '')
         message.content = message.content.replace('<', '')
@@ -107,6 +108,7 @@ async def on_message(message):
         print(userid)
         user = await client.fetch_user(userid)
         await message.channel.send(user.mention, file=discord.File('funnies/grugun.png'))
+    # </editor-fold>
 
 
 @client.event
