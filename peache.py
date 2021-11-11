@@ -1,4 +1,4 @@
-# Work with Python 3.6
+# Work with Python 3.7
 import discord
 import re
 import random
@@ -14,13 +14,13 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('.hello'):
+    if message.content.startswith('!hello'):
         msg = 'Hello {0.author.mention}'.format(message)
         await message.channel.send(msg)
 
-    elif message.content.startswith('.roll'):
+    elif message.content.startswith('!roll'):
         # Remove leading command
-        fullroll = message.content.replace('.roll', '')
+        fullroll = message.content.replace('!roll', '')
         # Remove any whitespace
         fullroll = fullroll.replace(' ', '')
         # Split into parts to be subtracted from each other
@@ -32,7 +32,7 @@ async def on_message(message):
         for x in negrollparts:
             # Need to add a '-' to the FIRST split of every rollpart other than the first
             rollpart = re.split("[+]", x)
-            if i>0:
+            if i > 0:
                 rollpart[0] = '-' + rollpart[0]
             for p in rollpart:
                 fullsplit.append(p)
@@ -96,6 +96,17 @@ async def on_message(message):
 
         output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
         await message.channel.send(output)
+
+    elif message.content.startswith('!kill'):
+        message.content = message.content.replace('!kill', '')
+        message.content = message.content.replace('<', '')
+        message.content = message.content.replace('@', '')
+        message.content = message.content.replace('!', '')
+        message.content = message.content.replace('>', '')
+        userid = message.content.replace(' ', '')
+        print(userid)
+        user = await client.fetch_user(userid)
+        await message.channel.send(user.mention, file=discord.File('funnies/grugun.png'))
 
 
 @client.event
