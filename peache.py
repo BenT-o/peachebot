@@ -3,32 +3,36 @@ import discord
 import re
 import random
 
-TOKEN = ''
+TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
 
 client = discord.Client()
 
 
 @client.event
+# <editor-fold desc="On Message...">
 async def on_message(message):
-    # we do not want the bot to reply to itself
+    # <editor-fold desc="we do not want the bot to reply to itself">
     if message.author == client.user:
         return
+    # </editor-fold>
 
+    # <editor-fold desc="Hello Command">
     if message.content.startswith('!hello'):
         msg = 'Hello {0.author.mention}'.format(message)
         await message.channel.send(msg)
+    # </editor-fold>
 
+    # <editor-fold desc="Roll Command">
     elif message.content.startswith('!roll'):
-        # Remove leading command
+        # Remove leading command and any whitespace
         fullroll = message.content.replace('!roll', '')
-        # Remove any whitespace
         fullroll = fullroll.replace(' ', '')
         # Split into parts to be subtracted from each other
         negrollparts = re.split("[-]", fullroll)
         # Create empty array to collect all values
         fullsplit = []
         i = 0
-        # For each component of negative parts, split on + and add to full split
+        # For each component of negative parts, split on + and add to fullsplit array
         for x in negrollparts:
             # Need to add a '-' to the FIRST split of every rollpart other than the first
             rollpart = re.split("[+]", x)
@@ -96,6 +100,7 @@ async def on_message(message):
 
         output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
         await message.channel.send(output)
+    # </editor-fold>
 
     # <editor-fold desc="Kill Command">
     elif message.content.startswith('!kill'):
@@ -109,7 +114,7 @@ async def on_message(message):
         user = await client.fetch_user(userid)
         await message.channel.send(user.mention, file=discord.File('funnies/grugun.png'))
     # </editor-fold>
-
+# </editor-fold>
 
 @client.event
 async def on_ready():
@@ -117,6 +122,5 @@ async def on_ready():
     print(client.user.name)
     print(client.user.id)
     print('------')
-
 
 client.run(TOKEN)
