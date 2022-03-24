@@ -30,9 +30,9 @@ async def on_message(message):
 
         # Is this a pool roll or a regular roll?
         if ">" in fullroll or "<" in fullroll:
-            await pool(fullroll)
+            await pool(fullroll, message)
         else:
-            await roll(fullroll)
+            await roll(fullroll, message)
     # </editor-fold>
 
     # <editor-fold desc="Kill Command">
@@ -49,6 +49,7 @@ async def on_message(message):
     # </editor-fold>
 # </editor-fold>
 
+
 @client.event
 async def on_ready():
     print('Logged in as')
@@ -56,7 +57,8 @@ async def on_ready():
     print(client.user.id)
     print('------')
 
-async def roll(fullroll):
+
+async def roll(fullroll, message):
     # Split into parts to be subtracted from each other
     negrollparts = re.split("[-]", fullroll)
     # Create empty array to collect all values
@@ -131,28 +133,48 @@ async def roll(fullroll):
     output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
     await message.channel.send(output)
 
-async def pool(fullroll):
+
+async def pool(fullroll, message):
     # split roll into parts
     targetparts = re.split("[<>]", fullroll)
     diceparts = re.split("d", targetparts[0])
 
     # assign parts to function
-    dicecount = diceparts[0]
-    dicesize = diceparts[1]
-    target = targetparts[1]
+    dicecount = int(diceparts[0])
+    dicesize = int(diceparts[1])
+    target = int(targetparts[1])
 
-    #create array for rolls and number of successes
+    # create array for rolls and number of successes
     rolledarray = []
     succ = 0
 
+    for i in range(abs(int(dicecount))):
+        roll = (random.randint(1, dicesize))
+        rolledarray.append(roll)
+
     if ">" in fullroll:
-        for i in range(abs(int(dicecount))):
-            roll = (random.randint(1, int(rollpart[1])))
-            rolledarray.append(roll)
-
-
+        for r in rolledarray:
+            if r >= target:
+                succ = succ+1
     elif "<" in fullroll:
+        for r in rolledarray:
+            if r <= target:
+                succ = succ+1
 
+    print(rolledarray)
+    print('TARGET: ' + str(target))
+    print('SUCC: ' + str(succ))
+    print("-------")
+
+    prettystring = '['
+    for i in range(rolledarray.__len__()):
+        if i == 0:
+            prettystring = prettystring + str(rolledarray[i])
+        else:
+            prettystring = prettystring + ', ' + str(rolledarray[i])
+    prettystring = prettystring + '] '
+    output = message.author.mention + ' rolled **' + str(succ) + '** successes!\n' + prettystring
+    await message.channel.send(output)
 
 
 client.run(TOKEN)
