@@ -8,7 +8,9 @@ TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
 client = discord.Client()
 
 global svmode
+global chart
 svmode = False
+chart = 0
 
 @client.event
 async def on_ready():
@@ -21,6 +23,7 @@ async def on_ready():
 # <editor-fold desc="On Message...">
 async def on_message(message):
     global svmode
+    global chart
     # <editor-fold desc="we do not want the bot to reply to itself">
     if message.author == client.user:
         return
@@ -75,6 +78,25 @@ async def on_message(message):
         print(userid)
         user = await client.fetch_user(userid)
         await message.channel.send(user.mention, file=discord.File('funnies/grugun.png'))
+    # </editor-fold>
+# </editor-fold>
+
+    # <editor-fold desc="Chart Command">
+    elif message.content.startswith('!chart reset'):
+        chart = 0
+        print("Chart value is now: " + str(chart))
+
+    elif message.content.startswith('!chart'):
+        if chart == 0:
+            await message.channel.send(file=discord.File('funnies/the_chart.png'))
+        elif chart == 1:
+            await message.channel.send(file=discord.File('funnies/the_chart_2.jpg'))
+        elif chart == 2:
+            await message.channel.send(file=discord.File('funnies/the_chart_3.gif'))
+        else:
+            await message.channel.send(file=discord.File('funnies/the_chart_4.jpg'))
+        chart = chart+1
+        print("Chart value is now: " + str(chart))
     # </editor-fold>
 # </editor-fold>
 
