@@ -7,10 +7,20 @@ TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
 
 client = discord.Client()
 
+global svmode
+svmode = False
+
+@client.event
+async def on_ready():
+    print('Logged in as')
+    print(client.user.name)
+    print(client.user.id)
+    print('------')
 
 @client.event
 # <editor-fold desc="On Message...">
 async def on_message(message):
+    global svmode
     # <editor-fold desc="we do not want the bot to reply to itself">
     if message.author == client.user:
         return
@@ -22,17 +32,36 @@ async def on_message(message):
         await message.channel.send(msg)
     # </editor-fold>
 
+    # <editor-fold desc="svmode Command">
+    elif message.content.startswith('!svmode'):
+        if svmode:
+            svmode = False
+            await message.channel.send("Scum & Villainy mode is now **OFF**.")
+        else:
+            svmode = True
+            await message.channel.send("Scum & Villainy mode is now **ON**.")
+    # </editor-fold>
+
     # <editor-fold desc="Rolling">
     elif message.content.startswith('!roll'):
         # Remove leading command and any whitespace
         fullroll = message.content.replace('!roll', '')
         fullroll = fullroll.replace(' ', '')
-
+        if svmode and 'd6' in fullroll:
+            await svroll(fullroll, message)
         # Is this a pool roll or a regular roll?
-        if ">" in fullroll or "<" in fullroll:
+        elif ">" in fullroll or "<" in fullroll:
             await pool(fullroll, message)
         else:
             await roll(fullroll, message)
+    # </editor-fold>
+
+    # <editor-fold desc="SV Roll">
+    elif message.content.startswith('!sv'):
+        # Remove leading command and any whitespace
+        fullroll = message.content.replace('!sv', '')
+        fullroll = fullroll.replace(' ', '')
+        await svroll(fullroll, message)
     # </editor-fold>
 
     # <editor-fold desc="Kill Command">
@@ -48,14 +77,6 @@ async def on_message(message):
         await message.channel.send(user.mention, file=discord.File('funnies/grugun.png'))
     # </editor-fold>
 # </editor-fold>
-
-
-@client.event
-async def on_ready():
-    print('Logged in as')
-    print(client.user.name)
-    print(client.user.id)
-    print('------')
 
 
 async def roll(fullroll, message):
@@ -175,6 +196,68 @@ async def pool(fullroll, message):
     prettystring = prettystring + '] '
     output = message.author.mention + ' rolled **' + str(succ) + '** successes!\n' + prettystring
     await message.channel.send(output)
+
+
+async def svroll(fullroll, message):
+    # split roll into parts
+    diceparts = re.split("d", fullroll)
+
+    # assign parts to function
+    dicecount = int(diceparts[0])
+
+    # create array for rolls and number of successes
+    rolledarray = []
+    succ = 0
+    partial = 0
+
+    for i in range(abs(int(dicecount))):
+        roll = (random.randint(1, 6))
+        rolledarray.append(roll)
+        if roll == 6:
+            succ = succ+1
+        elif roll == 4 or roll == 5:
+            partial = partial+1
+
+    rolledarray.sort(reverse=True)
+
+    print(rolledarray)
+    print("-------")
+
+    if succ > 1:
+        result = "Crit"
+    elif succ == 1:
+        result = "Succ"
+    elif partial > 0:
+        result = "Partial"
+    elif partial == 0:
+        result = "Fail"
+
+    prettystring = '['
+    for i in range(rolledarray.__len__()):
+        if i == 0:
+            if rolledarray[i] == 6:
+                prettystring = prettystring + '**' + str(rolledarray[i]) + '**'
+            else:
+                prettystring = prettystring + str(rolledarray[i])
+        else:
+            if rolledarray[i] == 6:
+                prettystring = prettystring + ', **' + str(rolledarray[i]) + '**'
+            else:
+                prettystring = prettystring + ', ' + str(rolledarray[i])
+
+    prettystring = prettystring + ']'
+
+#    if result == "Crit":
+#        output = message.author.mention + ' rolled **A CRIT**!\n' + prettystring
+#    elif result == "Succ":
+#        output = message.author.mention + ' rolled a **full success**!\n' + prettystring
+#    elif result == "Partial":
+#        output = message.author.mention + ' rolled a **partial success**.\n' + prettystring
+#    elif result == "Fail":
+#        output = message.author.mention + ' *FAILED**!\n' + prettystring
+    output = message.author.mention + 'rolled: \n' + prettystring
+    await message.channel.send(output)
+
 
 
 client.run(TOKEN)
