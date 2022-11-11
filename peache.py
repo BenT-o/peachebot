@@ -5,12 +5,15 @@ import random
 
 TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
 
-client = discord.Client()
+intents = discord.Intents.all()
+intents.message_content = True
+client = discord.Client(intents=intents)
 
 global svmode
 global chart
 svmode = False
 chart = 0
+
 
 @client.event
 async def on_ready():
@@ -18,6 +21,7 @@ async def on_ready():
     print(client.user.name)
     print(client.user.id)
     print('------')
+
 
 @client.event
 # <editor-fold desc="On Message...">
@@ -279,7 +283,6 @@ async def svroll(fullroll, message):
 #        output = message.author.mention + ' *FAILED**!\n' + prettystring
     output = message.author.mention + 'rolled: \n' + prettystring
     await message.channel.send(output)
-
 
 
 client.run(TOKEN)
