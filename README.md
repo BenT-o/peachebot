@@ -6,7 +6,7 @@ Welcome to peachebot. A discord bot project by ben.
 peachebot will respond, good way to make sure he's online and listening.
 
 ### !svmode
-Switches between ON and OFF. When ON d6 rolls are not totalled and instead displayed in a sorted array. Defasult OFF.
+Switches between ON and OFF. When ON d6 rolls are not totalled and instead displayed in a sorted array. Default OFF.
 
 ### !roll
 Roll functionality. Takes either standard rolls (!roll 2d6+4) or pool rolls with a target number (!roll 6d10>5).
