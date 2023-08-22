@@ -205,11 +205,17 @@ async def roll(fullroll, message):
             if is_neg:
                 x = -random.randint(1, die_s)
                 total = total + x
-                rolls.append(x)
+                if x == die_s:
+                    rolls.append(f'__{x}__')
+                else:
+                    rolls.append(x)
             else:
                 x = random.randint(1, die_s)
                 total = total + x
-                rolls.append(x)
+                if x == die_s:
+                    rolls.append(f'__{x}__')
+                else:
+                    rolls.append(x)
             die_c = die_c - 1
         print(rolls)
 
@@ -256,22 +262,28 @@ async def roll(fullroll, message):
     print('TOTAL: ' + str(total))
     print("-------")
 
-    prettystring = '['
+    prettystring = ''
     for i in range(rolledarray.__len__()):
         if i == 0:
             prettystring = prettystring + str(rolledarray[i])
         else:
             prettystring = prettystring + ', ' + str(rolledarray[i])
-    prettystring = prettystring + '] '
+    prettystring = prettystring + ' '
     if mod < 0:
         prettystring = prettystring + '- ' + str(abs(mod))
     elif mod > 0:
         prettystring = prettystring + '+ ' + str(mod)
     prettystring = re.sub(r'\'', '', prettystring)
-    if fullroll.__len__() > 0:
-        output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring
+    if re.search(r'__\d+__', prettystring):
+        if fullroll.__len__() > 0:
+            output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
+        else:
+            output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
     else:
-        output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
+        if fullroll.__len__() > 0:
+            output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring
+        else:
+            output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
     await message.channel.send(output)
 
 
