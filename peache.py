@@ -2,15 +2,28 @@
 import discord
 import re
 import random
+import math
 
 TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
 
-client = discord.Client()
+intents = discord.Intents.all()
+intents.messages = True
+client = discord.Client(intents=intents)
 
 global svmode
 global chart
+global gagfred
 svmode = False
 chart = 0
+gagfred = False
+
+global regex_any_roll
+global regex_roll
+global regex_with_text
+regex_any_roll = re.compile('\d* *#? *\d* *d *\d+ *( *[\+\-\<\>]+ *)?(?(1)\d+|) *([kd]+[hl]+)?(?(2) *\d+|)')
+regex_roll = re.compile('([+-]? *\d* *d *\d+)( *[kd][hl]? *\d+)?')
+regex_mod = re.compile('[\+\-] *\d+')
+regex_adv = re.compile(' *[kd][hl] *\d*')
 
 @client.event
 async def on_ready():
@@ -24,9 +37,31 @@ async def on_ready():
 async def on_message(message):
     global svmode
     global chart
-    # <editor-fold desc="we do not want the bot to reply to itself">
+    global gagfred
+    global regex_any_roll
+    global regex_roll
+    global regex_mod
+    # we do not want the bot to reply to itself
     if message.author == client.user:
         return
+
+    # <editor-fold desc="Gag Fred">
+    elif message.author.id == 201040951211327488 and gagfred:
+        await message.delete()
+    # </editor-fold>
+
+    # <editor-fold desc="gagfred command">
+    elif message.content.startswith('!gagfred'):
+        if gagfred:
+            gagfred = False
+            print("gagfred was: ", gagfred)
+            await message.channel.send("The Worm Is Unleashed. Fred no longer being gagged.")
+            print("gagfred is now: ", gagfred)
+        else:
+            print("gagfred was: ", gagfred)
+            gagfred = True
+            await message.channel.send("Begone, Worm! Fred is now being gagged.")
+            print("gagfred is now: ", gagfred)
     # </editor-fold>
 
     # <editor-fold desc="Hello Command">
@@ -45,26 +80,50 @@ async def on_message(message):
             await message.channel.send("Scum & Villainy mode is now **ON**.")
     # </editor-fold>
 
-    # <editor-fold desc="Rolling">
+    # <editor-fold desc="Rolling Command">
     elif message.content.startswith('!roll'):
-        # Remove leading command and any whitespace
+        # Remove leading command (and any whitespace)
         fullroll = message.content.replace('!roll', '')
-        fullroll = fullroll.replace(' ', '')
-        if svmode and 'd6' in fullroll:
-            await svroll(fullroll, message)
+        # Separate roll from any trailing text
+        # roll_text_split = re.split(regex_any_roll, fullroll)
+        # trailing_text = roll_text_split.pop()
+        # if trailing_text.__len__() <= 3:
+        #     trailing_text = ''
+        # fullroll = re.search(regex_any_roll, fullroll)[0]
+        # fullroll = fullroll.replace(' ','')
+
+        # How many times do we want to do this?
+        if "#" in fullroll:
+            # Need to make sure new fullroll doesn't include the x#
+            count = int(re.split('#', fullroll)[0])
+            fullroll = re.split('#', fullroll)[1]
+        else:
+            count = 1
+
+        if count < 0:
+            await message.channel.send('guh? I can\'t roll dice negative amount of times!')
+
+        # Is Scum & Villainy mode on?
+        elif svmode and 'd6' in fullroll:
+            while count > 0:
+                await svroll(fullroll, message)
+                count = count-1
+
+        # Is this a Dark Heresy roll?
+        elif "<" in fullroll and "d100" in fullroll:
+            while count > 0:
+                await dhroll(fullroll, message)
+                count = count-1
+
         # Is this a pool roll or a regular roll?
         elif ">" in fullroll or "<" in fullroll:
-            await pool(fullroll, message)
+            while count > 0:
+                await pool(fullroll, message)
+                count = count-1
         else:
-            await roll(fullroll, message)
-    # </editor-fold>
-
-    # <editor-fold desc="SV Roll">
-    elif message.content.startswith('!sv'):
-        # Remove leading command and any whitespace
-        fullroll = message.content.replace('!sv', '')
-        fullroll = fullroll.replace(' ', '')
-        await svroll(fullroll, message)
+            while count > 0:
+                await roll(fullroll, message)
+                count = count-1
     # </editor-fold>
 
     # <editor-fold desc="Kill Command">
@@ -79,7 +138,6 @@ async def on_message(message):
         user = await client.fetch_user(userid)
         await message.channel.send(user.mention, file=discord.File('funnies/grugun.png'))
     # </editor-fold>
-# </editor-fold>
 
     # <editor-fold desc="Chart Command">
     elif message.content.startswith('!chart reset'):
@@ -98,82 +156,134 @@ async def on_message(message):
         chart = chart+1
         print("Chart value is now: " + str(chart))
     # </editor-fold>
+
 # </editor-fold>
 
 
 async def roll(fullroll, message):
-    # Split into parts to be subtracted from each other
-    negrollparts = re.split("[-]", fullroll)
-    # Create empty array to collect all values
-    fullsplit = []
-    i = 0
-    # For each component of negative parts, split on + and add to fullsplit array
-    for x in negrollparts:
-        # Need to add a '-' to the FIRST split of every rollpart other than the first
-        rollpart = re.split("[+]", x)
-        if i > 0:
-            rollpart[0] = '-' + rollpart[0]
-        for p in rollpart:
-            fullsplit.append(p)
-        print(fullsplit)
-        i = i+1
+    # Separate components of the roll
+    print("FULLROLL = " + fullroll)
+    roll_dice = re.findall(regex_roll, fullroll)
+    print("ROLL_DICE = ")
+    print(roll_dice)
+    fullroll = re.sub(regex_roll, '', fullroll)
+    print("FULLROLL = " + fullroll)
+    # Extract mods
+    roll_mod = re.findall(regex_mod, fullroll)
+    print("ROLL MODS = ")
+    print(roll_mod)
+    fullroll = re.sub(regex_mod, '', fullroll)
+    print("FULLROLL = " + fullroll)
 
-    print(fullsplit)
-
-    # Initialise an array to hold the rolled values
+    # Initialise the final array & total
     rolledarray = []
-    # Initialise rolled total
     total = 0
-    mod = 0
-    for x in range(fullsplit.__len__()):
-        rollpart = re.split("[d]", fullsplit[x])
-        print(rollpart)
-        if rollpart.__len__() == 2:
-            if rollpart[0].__len__() == 0:
-                rollpart[0] = '1'
-            if rollpart[0].startswith('-'):
-                if rollpart[0].__len__() == 1:
-                    rollpart[0] = '-1'
-                elif int(rollpart[0]) >= 50:
-                    await message.channel.send('Too many dice! My head hurts!! :weary:')
-                    break
-                for i in range(abs(int(rollpart[0]))):
-                    roll = (random.randint(1, int(rollpart[1])))
-                    rolledarray.append(roll)
-                    total = total+(roll*-1)
-            else:
-                if int(rollpart[0]) >= 50:
-                    await message.channel.send('Too many dice! My head hurts!! :weary:')
-                    break
-                for i in range(abs(int(rollpart[0]))):
-                    roll = (random.randint(1, int(rollpart[1])))
-                    rolledarray.append(roll)
-                    total = total+roll
-        elif rollpart.__len__() == 1:
-            total = total + int(fullsplit[x])
-            mod = mod + int(fullsplit[x])
+    # Prep rolled array
+    for roll in roll_dice:
+        splitroll = re.split(r'd', roll[0])
+        c_temp = re.sub(r' *', '', splitroll[0])
+        if c_temp == '' or c_temp == '+':
+            die_c = 1
+        elif c_temp == '-':
+            die_c = 1
+        elif c_temp.startswith('+'):
+            die_c = int(c_temp[1:])
         else:
-            msg = 'Uh oh, something went wrong! Check your syntax and try again.'
-            await message.channel.send(msg)
-            break
+            die_c = int(c_temp)
+        die_s = re.sub(r' *', '', splitroll[1])
+        die_s = int(die_s)
+
+        rolls = []
+        if die_c < 0:
+            is_neg = True
+        else:
+            is_neg = False
+        die_c = abs(die_c)
+
+        # Perform Rolls
+        while die_c > 0:
+            if is_neg:
+                x = -random.randint(1, die_s)
+                total = total + x
+                if x == die_s:
+                    rolls.append(f'__{x}__')
+                else:
+                    rolls.append(x)
+            else:
+                x = random.randint(1, die_s)
+                total = total + x
+                if x == die_s:
+                    rolls.append(f'__{x}__')
+                else:
+                    rolls.append(x)
+            die_c = die_c - 1
+        print(rolls)
+
+        if roll[1] == "":
+            rolledarray.append(str(rolls))
+        else:
+            advrollmod_type = roll[1][:2]
+            print("advrollmod_type = " + advrollmod_type)
+            advrollmod_count = int(roll[1][2:])
+            print("advrollmod_count = " + str(advrollmod_count))
+            sortedrolledarray = sorted(rolls)
+            if advrollmod_type == 'kh':
+                keep = sortedrolledarray[-advrollmod_count:]
+                drop = sortedrolledarray[:-advrollmod_count]
+            elif advrollmod_type == 'kl':
+                keep = sortedrolledarray[:advrollmod_count]
+                drop = sortedrolledarray[advrollmod_count:]
+            elif advrollmod_type == 'dh':
+                keep = sortedrolledarray[:-advrollmod_count]
+                drop = sortedrolledarray[-advrollmod_count:]
+            elif advrollmod_type == 'dl':
+                keep = sortedrolledarray[advrollmod_count:]
+                drop = sortedrolledarray[:advrollmod_count]
+            print(drop)
+            for d in drop:
+                for x in rolls:
+                    if x == d:
+                        total = total - d
+                        rolls[rolls.index(d)] = "~~" + str(rolls[rolls.index(d)]) + "~~"
+                        break
+            rolledarray.append(str(rolls))
+
+    mod = 0
+    for x in roll_mod:
+        x = re.sub(' *', '', x)
+        if x.startswith('+'):
+            mod = mod + int(x[1:])
+        else:
+            mod = mod + int(x)
+    total = total+mod
 
     print(rolledarray)
-    print('MOD: ' + str(mod))
+    #print('MOD: ' + str(mod))
     print('TOTAL: ' + str(total))
     print("-------")
 
-    prettystring = '['
+    prettystring = ''
     for i in range(rolledarray.__len__()):
         if i == 0:
             prettystring = prettystring + str(rolledarray[i])
         else:
             prettystring = prettystring + ', ' + str(rolledarray[i])
-    prettystring = prettystring + '] '
+    prettystring = prettystring + ' '
     if mod < 0:
         prettystring = prettystring + '- ' + str(abs(mod))
     elif mod > 0:
         prettystring = prettystring + '+ ' + str(mod)
-    output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
+    prettystring = re.sub(r'\'', '', prettystring)
+    if re.search(r'__\d+__', prettystring):
+        if fullroll.__len__() > 0:
+            output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
+        else:
+            output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
+    else:
+        if fullroll.__len__() > 0:
+            output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring
+        else:
+            output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
     await message.channel.send(output)
 
 
@@ -219,6 +329,39 @@ async def pool(fullroll, message):
     output = message.author.mention + ' rolled **' + str(succ) + '** successes!\n' + prettystring
     await message.channel.send(output)
 
+async def dhroll(fullroll, message):
+    #split roll into parts
+    diceparts = re.split("<", fullroll)
+
+    # assign parts to function
+    target = int(diceparts[1])
+
+    roll = random.randint(1, 100)
+
+    diff = target - roll
+    if diff >= 0:
+        succ = True
+        diff = diff / 10
+        diff = math.trunc(diff)
+    elif diff < 0:
+        succ = False
+        diff = diff / 10
+        diff = math.trunc(diff)
+        diff = -diff
+
+    dos = diff+1
+
+    print(roll)
+    print('TARGET: ' +str(target))
+    print("-------")
+
+    prettystring = '[' + str(roll) + '] - Target: ' + str(target)
+    if succ:
+        output = message.author.mention + ' succeeded with **' + str(dos) + '** DoS!\n' + prettystring
+    else:
+        output = message.author.mention + ' failed with **' + str(dos) + '** DoF!\n' + prettystring
+
+    await message.channel.send(output)
 
 async def svroll(fullroll, message):
     # split roll into parts
@@ -279,7 +422,6 @@ async def svroll(fullroll, message):
 #        output = message.author.mention + ' *FAILED**!\n' + prettystring
     output = message.author.mention + 'rolled: \n' + prettystring
     await message.channel.send(output)
-
 
 
 client.run(TOKEN)
