@@ -13,9 +13,11 @@ client = discord.Client(intents=intents)
 global svmode
 global chart
 global gagfred
+global users
 svmode = False
 chart = 0
 gagfred = False
+users = []
 
 global regex_any_roll
 global regex_roll
@@ -38,9 +40,11 @@ async def on_message(message):
     global svmode
     global chart
     global gagfred
+    global users
     global regex_any_roll
     global regex_roll
     global regex_mod
+
     # we do not want the bot to reply to itself
     if message.author == client.user:
         return
@@ -157,27 +161,41 @@ async def on_message(message):
         print("Chart value is now: " + str(chart))
     # </editor-fold>
 
+    elif message.content.startswith('!luck'):
+        await postluck(message)
+
 # </editor-fold>
 
 
 async def roll(fullroll, message):
     # Separate components of the roll
-    print("FULLROLL = " + fullroll)
+    #print("FULLROLL = " + fullroll)
     roll_dice = re.findall(regex_roll, fullroll)
-    print("ROLL_DICE = ")
-    print(roll_dice)
+    #print("ROLL_DICE = ")
+    #print(roll_dice)
     fullroll = re.sub(regex_roll, '', fullroll)
-    print("FULLROLL = " + fullroll)
+    #print("FULLROLL = " + fullroll)
     # Extract mods
     roll_mod = re.findall(regex_mod, fullroll)
-    print("ROLL MODS = ")
-    print(roll_mod)
+    #print("ROLL MODS = ")
+    #print(roll_mod)
     fullroll = re.sub(regex_mod, '', fullroll)
-    print("FULLROLL = " + fullroll)
+    #print("FULLROLL = " + fullroll)
 
     # Initialise the final array & total
     rolledarray = []
     total = 0
+    # Prep logging of rolls for stats
+    roller = message.author
+    userlist = []
+    for i in users:
+        userlist.append(i[0])
+    if roller in userlist:
+        userid = userlist.index(roller)
+    else:
+        users.append([roller])
+        userid = len(users)-1
+
     # Prep rolled array
     for roll in roll_dice:
         splitroll = re.split(r'd', roll[0])
@@ -209,6 +227,7 @@ async def roll(fullroll, message):
                     rolls.append(f'__{x}__')
                 else:
                     rolls.append(x)
+                users[userid].append([x, die_s])
             else:
                 x = random.randint(1, die_s)
                 total = total + x
@@ -216,6 +235,7 @@ async def roll(fullroll, message):
                     rolls.append(f'__{x}__')
                 else:
                     rolls.append(x)
+                users[userid].append([x, die_s])
             die_c = die_c - 1
         print(rolls)
 
@@ -261,6 +281,7 @@ async def roll(fullroll, message):
     #print('MOD: ' + str(mod))
     print('TOTAL: ' + str(total))
     print("-------")
+    print(f'USER LIST = {users}')
 
     prettystring = ''
     for i in range(rolledarray.__len__()):
@@ -329,6 +350,7 @@ async def pool(fullroll, message):
     output = message.author.mention + ' rolled **' + str(succ) + '** successes!\n' + prettystring
     await message.channel.send(output)
 
+
 async def dhroll(fullroll, message):
     #split roll into parts
     diceparts = re.split("<", fullroll)
@@ -362,6 +384,7 @@ async def dhroll(fullroll, message):
         output = message.author.mention + ' failed with **' + str(dos) + '** DoF!\n' + prettystring
 
     await message.channel.send(output)
+
 
 async def svroll(fullroll, message):
     # split roll into parts
@@ -422,6 +445,72 @@ async def svroll(fullroll, message):
 #        output = message.author.mention + ' *FAILED**!\n' + prettystring
     output = message.author.mention + 'rolled: \n' + prettystring
     await message.channel.send(output)
+
+
+async def postluck(message):
+    msg = []
+    for user in users:
+        rolls = user[1:]
+        diecount = len(user[1:])
+        d20rolls = []
+        bestroll = [0, 999]
+        worstroll = [999, 1]
+        bestd20 = 0
+        worstd20 = 21
+        allper = []
+        maxcount = 0
+        mincount = 0
+        for rollpair in rolls:
+            rollper = rollpair[0]/rollpair[1]
+            allper.append(rollper*100)
+            # Checking for best roll
+            # Checking if roll is better by proportion
+            if rollper > bestroll[0]/bestroll[1]:
+                bestroll = rollpair
+            # Checking if roll is same by proportion but larger die (considered better roll)
+            elif rollper == bestroll[0]/bestroll[1]:
+                if rollpair[1] > bestroll[1]:
+                    bestroll = rollpair
+            # In all other cases, bestroll remains unchanged
+
+            # Checking for worst roll
+            # Checking if roll is worse by proportion
+            if rollper < worstroll[0]/worstroll[1]:
+                worstroll = rollpair
+            # Checking if roll is the same by proportion but larger die
+            elif rollper == worstroll[0]/worstroll[1]:
+                if rollpair[1] > worstroll[1]:
+                    worstroll = rollpair
+            # In all other cases, worstroll remains unchanged
+
+            if rollpair[1] == 20:
+                if rollpair[0] > bestd20:
+                    bestd20 = rollpair[0]
+                if rollpair[0] < worstd20:
+                    worstd20 = rollpair[0]
+                d20rolls.append(rollpair[0])
+
+            if rollpair[0] == rollpair[1]:
+                maxcount = maxcount+1
+            if rollpair[0] == 1:
+                mincount = mincount+1
+        nat20 = d20rolls.count(20)
+        nat1 = d20rolls.count(1)
+        averageper = sum(allper)/diecount
+        average = sum(d20rolls)/len(d20rolls)
+        msg.append(str(user[0].mention) + ' stats:' + '\n' + f'You rolled a total of **{diecount}** dice.\n' +
+                   f'On average you rolled in {round(averageper,2)} percentile on all of your dice.\n' +
+                   f'Your best roll was a {bestroll[0]} on a d{bestroll[1]} ({round((bestroll[0]/bestroll[1])*100,2)} percentile)\n' +
+                   f'Your worst roll was a {worstroll[0]} on a d{worstroll[1]} ({round((worstroll[0]/worstroll[1])*100,2)} percentile)\n' +
+                   f'You rolled maximum on {maxcount} die.\n' +
+                   f'You rolled minimum on {mincount} die.\n\n' +
+                   f'Total number of d20s rolled: **{len(d20rolls)}**\n' +
+                   f'Your average on all of these was {round(average,2)}\n' +
+                   f'Your best roll on a d20 was {bestd20}\n' +
+                   f'Your worst roll on a d20 was {worstd20}\n' +
+                   f'You rolled {nat20} nat 20s and {nat1} nat 1s.')
+    for m in msg:
+        await message.channel.send(m)
 
 
 client.run(TOKEN)
