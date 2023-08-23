@@ -161,30 +161,26 @@ async def on_message(message):
         print("Chart value is now: " + str(chart))
     # </editor-fold>
 
-    elif message.content.startswith('!luck'):
+    # <editor-fold desc="Stats Command">
+    elif message.content.startswith('!stats'):
         await postluck(message)
+    # </editor-fold>
 
 # </editor-fold>
 
 
 async def roll(fullroll, message):
     # Separate components of the roll
-    #print("FULLROLL = " + fullroll)
     roll_dice = re.findall(regex_roll, fullroll)
-    #print("ROLL_DICE = ")
-    #print(roll_dice)
     fullroll = re.sub(regex_roll, '', fullroll)
-    #print("FULLROLL = " + fullroll)
     # Extract mods
     roll_mod = re.findall(regex_mod, fullroll)
-    #print("ROLL MODS = ")
-    #print(roll_mod)
     fullroll = re.sub(regex_mod, '', fullroll)
-    #print("FULLROLL = " + fullroll)
 
     # Initialise the final array & total
     rolledarray = []
     total = 0
+
     # Prep logging of rolls for stats
     roller = message.author
     userlist = []
@@ -278,7 +274,7 @@ async def roll(fullroll, message):
     total = total+mod
 
     print(rolledarray)
-    #print('MOD: ' + str(mod))
+    print('MOD: ' + str(mod))
     print('TOTAL: ' + str(total))
     print("-------")
     print(f'USER LIST = {users}')
@@ -305,6 +301,7 @@ async def roll(fullroll, message):
             output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring
         else:
             output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
+
     await message.channel.send(output)
 
 
@@ -312,11 +309,12 @@ async def pool(fullroll, message):
     # split roll into parts
     targetparts = re.split("[<>]", fullroll)
     diceparts = re.split("d", targetparts[0])
+    trailing = re.sub(regex_any_roll, '', fullroll)
 
     # assign parts to function
     dicecount = int(diceparts[0])
     dicesize = int(diceparts[1])
-    target = int(targetparts[1])
+    target = int(re.findall(r'\d', targetparts[1])[0])
 
     # create array for rolls and number of successes
     rolledarray = []
@@ -325,14 +323,11 @@ async def pool(fullroll, message):
     for i in range(abs(int(dicecount))):
         roll = (random.randint(1, dicesize))
         rolledarray.append(roll)
-
-    if ">" in fullroll:
-        for r in rolledarray:
-            if r >= target:
+        if ">" in fullroll:
+            if roll >= target:
                 succ = succ+1
-    elif "<" in fullroll:
-        for r in rolledarray:
-            if r <= target:
+        elif "<" in fullroll:
+            if roll <= target:
                 succ = succ+1
 
     print(rolledarray)
@@ -343,11 +338,32 @@ async def pool(fullroll, message):
     prettystring = '['
     for i in range(rolledarray.__len__()):
         if i == 0:
-            prettystring = prettystring + str(rolledarray[i])
+            if ">" in fullroll:
+                if rolledarray[i] >= target:
+                    prettystring = prettystring + f'**{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f'{rolledarray[i]}'
+            elif "<" in fullroll:
+                if rolledarray[i] <= target:
+                    prettystring = prettystring + f'**{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f'{rolledarray[i]}'
         else:
-            prettystring = prettystring + ', ' + str(rolledarray[i])
+            if ">" in fullroll:
+                if rolledarray[i] >= target:
+                    prettystring = prettystring + f', **{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f', {rolledarray[i]}'
+            elif "<" in fullroll:
+                if rolledarray[i] <= target:
+                    prettystring = prettystring + f', **{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f', {rolledarray[i]}'
     prettystring = prettystring + '] '
-    output = message.author.mention + ' rolled **' + str(succ) + '** successes!\n' + prettystring
+    if len(trailing) >= 2:
+        output = f'{message.author.mention} rolled **{succ}** successes! __{trailing}__\n {prettystring}'
+    else:
+        output = f'{message.author.mention} rolled **{succ}** successes!\n {prettystring}'
     await message.channel.send(output)
 
 
