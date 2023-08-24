@@ -18,6 +18,7 @@ svmode = False
 chart = 0
 gagfred = False
 users = []
+sos_users = []
 
 global regex_any_roll
 global regex_roll
@@ -49,12 +50,12 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    # <editor-fold desc="Gag Fred">
+    # <editor-fold desc="Gag Fred Command">
     elif message.author.id == 201040951211327488 and gagfred:
         await message.delete()
     # </editor-fold>
 
-    # <editor-fold desc="gagfred command">
+    # <editor-fold desc="Gag Fred Command">
     elif message.content.startswith('!gagfred'):
         if gagfred:
             gagfred = False
@@ -164,6 +165,11 @@ async def on_message(message):
     # <editor-fold desc="Stats Command">
     elif message.content.startswith('!stats'):
         await postluck(message)
+    # </editor-fold>
+
+    # <editor-fold desc="SoS Stats Command">
+    elif message.content.startswith('!sos'):
+        await postsosluck(message)
     # </editor-fold>
 
 # </editor-fold>
@@ -291,7 +297,7 @@ async def roll(fullroll, message):
     elif mod > 0:
         prettystring = prettystring + '+ ' + str(mod)
     prettystring = re.sub(r'\'', '', prettystring)
-    if re.search(r'__\d+__', prettystring):
+    if re.search(r'__\d+__', prettystring) and die_s == 20:
         if fullroll.__len__() > 0:
             output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
         else:
@@ -314,7 +320,18 @@ async def pool(fullroll, message):
     # assign parts to function
     dicecount = int(diceparts[0])
     dicesize = int(diceparts[1])
-    target = int(re.findall(r'\d', targetparts[1])[0])
+    target = int(re.findall(r'\d+', targetparts[1])[0])
+
+    # Prep logging of rolls for stats
+    roller = message.author
+    userlist = []
+    for i in sos_users:
+        userlist.append(i[0])
+    if roller in userlist:
+        userid = userlist.index(roller)
+    else:
+        sos_users.append([roller])
+        userid = len(sos_users) - 1
 
     # create array for rolls and number of successes
     rolledarray = []
@@ -329,6 +346,11 @@ async def pool(fullroll, message):
         elif "<" in fullroll:
             if roll <= target:
                 succ = succ+1
+    print(dicesize)
+    if dicesize == 10:
+        expsucc = dicecount*(((10-target)+1)/10)
+        luckscore = ((succ/expsucc)*100)-100
+        sos_users[userid].append([dicecount, succ, target, luckscore])
 
     print(rolledarray)
     print('TARGET: ' + str(target))
@@ -368,7 +390,7 @@ async def pool(fullroll, message):
 
 
 async def dhroll(fullroll, message):
-    #split roll into parts
+    # split roll into parts
     diceparts = re.split("<", fullroll)
 
     # assign parts to function
@@ -465,7 +487,7 @@ async def svroll(fullroll, message):
 
 async def postluck(message):
     msg = []
-    for user in users:
+    for user in sos_users:
         rolls = user[1:]
         diecount = len(user[1:])
         d20rolls = []
@@ -514,7 +536,8 @@ async def postluck(message):
         nat1 = d20rolls.count(1)
         averageper = sum(allper)/diecount
         average = sum(d20rolls)/len(d20rolls)
-        msg.append(str(user[0].mention) + ' stats:' + '\n' + f'You rolled a total of **{diecount}** dice.\n' +
+        msg.append(str(user[0].mention) + ' stats:' + '\n' +
+                   f'You rolled a total of **{diecount}** dice.\n' +
                    f'On average you rolled in {round(averageper,2)} percentile on all of your dice.\n' +
                    f'Your best roll was a {bestroll[0]} on a d{bestroll[1]} ({round((bestroll[0]/bestroll[1])*100,2)} percentile)\n' +
                    f'Your worst roll was a {worstroll[0]} on a d{worstroll[1]} ({round((worstroll[0]/worstroll[1])*100,2)} percentile)\n' +
@@ -528,5 +551,49 @@ async def postluck(message):
     for m in msg:
         await message.channel.send(m)
 
+
+async def postsosluck(message):
+    msg = []
+    for user in sos_users:
+        rolls = user[1:]
+        rollscount = len(user[1:])
+        dicecount = 0
+        succtotal = 0
+        tntotal = 0
+        lucktotal = 0
+        bestluck = [0, 0, 0, -9999]
+        worstluck = [0, 0, 0, 9999]
+        bigpool = [0, 0, 0, 0]
+        smallpool = [9999, 0, 0, 0]
+        for roll in rolls:
+            dicecount = dicecount + roll[0]
+            succtotal = succtotal + roll[1]
+            tntotal = tntotal + roll[2]
+            lucktotal = lucktotal + roll[3]
+            if roll[3] > bestluck[3]:
+                bestluck = roll
+            if roll[3] < worstluck[3]:
+                worstluck = roll
+            if roll[0] > bigpool[0]:
+                bigpool = roll
+            if roll[0] < smallpool[0]:
+                smallpool = roll
+
+        diceperavg = dicecount/rollscount
+        succavg = succtotal/rollscount
+        tnavg = tntotal/rollscount
+        luckavg = lucktotal/rollscount
+
+        msg.append(str(user[0].mention) + ' stats:\n' +
+                   f'You made {rollscount} checks with {dicecount} total die.\n\n' +
+                   f'On average you rolled {diceperavg} dice and got {succavg} successes, attempting to beat an average TN of {tnavg}.\n\n' +
+                   f'Your largest dice pool was {bigpool[0]} dice at TN{bigpool[2]}, achieving {bigpool[1]} successes.\n' +
+                   f'Your smallest dice pool was {smallpool[0]} dice at TN{smallpool[2]}, achieving {smallpool[1]} successes.\n\n' +
+                   f'Your luckiest roll was achieving {bestluck[1]} successes with {bestluck[0]} dice at TN{bestluck[2]}: **{round(bestluck[3],2)}% lucky!**\n' +
+                   f'Your unluckiest roll was achieving {worstluck[1]} successes with {worstluck[0]} dice at TN{worstluck[2]}: **{round(worstluck[3],2)}% lucky.**\n\n' +
+                   f'Your overall Luck was **{round(luckavg,2)}%!**')
+
+    for m in msg:
+        await message.channel.send(m)
 
 client.run(TOKEN)
