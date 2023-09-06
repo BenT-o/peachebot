@@ -164,12 +164,17 @@ async def on_message(message):
 
     # <editor-fold desc="Stats Command">
     elif message.content.startswith('!stats'):
-        await postluck(message)
+        await postluck(message, users)
     # </editor-fold>
 
     # <editor-fold desc="SoS Stats Command">
     elif message.content.startswith('!sos'):
         await postsosluck(message)
+    # </editor-fold>
+
+    # <editor-fold desc="Stats Debug Command">
+    elif message.content.startswith('!debug'):
+        await message.channel.send('There\'s nothing to debug right now, you berk.')
     # </editor-fold>
 
 # </editor-fold>
@@ -225,18 +230,12 @@ async def roll(fullroll, message):
             if is_neg:
                 x = -random.randint(1, die_s)
                 total = total + x
-                if x == die_s:
-                    rolls.append(f'__{x}__')
-                else:
-                    rolls.append(x)
+                rolls.append(x)
                 users[userid].append([x, die_s])
             else:
                 x = random.randint(1, die_s)
                 total = total + x
-                if x == die_s:
-                    rolls.append(f'__{x}__')
-                else:
-                    rolls.append(x)
+                rolls.append(x)
                 users[userid].append([x, die_s])
             die_c = die_c - 1
         print(rolls)
@@ -268,7 +267,14 @@ async def roll(fullroll, message):
                         total = total - d
                         rolls[rolls.index(d)] = "~~" + str(rolls[rolls.index(d)]) + "~~"
                         break
-            rolledarray.append(str(rolls))
+            newrolls = []
+            for x in rolls:
+                x_int = int(re.sub(r'~', '', str(x)))
+                if x_int == die_s:
+                    newrolls.append(f'__{x}__')
+                else:
+                    newrolls.append(x)
+            rolledarray.append(str(newrolls))
 
     mod = 0
     for x in roll_mod:
@@ -485,9 +491,9 @@ async def svroll(fullroll, message):
     await message.channel.send(output)
 
 
-async def postluck(message):
+async def postluck(message, list):
     msg = []
-    for user in sos_users:
+    for user in list:
         rolls = user[1:]
         diecount = len(user[1:])
         d20rolls = []
