@@ -3,13 +3,15 @@ import discord
 import re
 import random
 import math
+import config
 
-TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
+TOKEN = config.bot["TOKEN"]
 
 intents = discord.Intents.all()
 intents.messages = True
 client = discord.Client(intents=intents)
 
+# Setting up global variables
 global svmode
 global chart
 global gagfred
@@ -20,6 +22,7 @@ gagfred = False
 users = []
 sos_users = []
 
+# Setting up global regex patterns for parsing rolls
 global regex_any_roll
 global regex_roll
 global regex_with_text
@@ -28,13 +31,19 @@ regex_roll = re.compile('([+-]? *\d* *d *\d+)( *[kd][hl]? *\d+)?')
 regex_mod = re.compile('[\+\-] *\d+')
 regex_adv = re.compile(' *[kd][hl] *\d*')
 
+
+# bot login
 @client.event
 async def on_ready():
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
     print('------')
+    loginMessage = f"```peachebot online\nlogged in as: {client.user.name}\nbot user id: {client.user.id}```"
+    await client.get_channel(config.bot["LogChannel"]).send(loginMessage)
 
+
+# When a message is received
 @client.event
 # <editor-fold desc="On Message...">
 async def on_message(message):
@@ -180,6 +189,7 @@ async def on_message(message):
 # </editor-fold>
 
 
+# Roll function
 async def roll(fullroll, message):
     # Separate components of the roll
     roll_dice = re.findall(regex_roll, fullroll)
@@ -241,7 +251,11 @@ async def roll(fullroll, message):
         print(rolls)
 
         if roll[1] == "":
-            rolledarray.append(str(rolls))
+            for i in range(len(rolls)):
+                if rolls[i] == die_s:
+                    rolls[i] = f"__{rolls[i]}__"
+            else:
+                rolledarray.append(str(rolls))
         else:
             advrollmod_type = roll[1][:2]
             print("advrollmod_type = " + advrollmod_type)
@@ -303,7 +317,7 @@ async def roll(fullroll, message):
     elif mod > 0:
         prettystring = prettystring + '+ ' + str(mod)
     prettystring = re.sub(r'\'', '', prettystring)
-    if re.search(r'__\d+__', prettystring) and die_s == 20:
+    if re.search(r'__\d+__', prettystring) and die_s == 20 and total-mod == 20:
         if fullroll.__len__() > 0:
             output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
         else:
