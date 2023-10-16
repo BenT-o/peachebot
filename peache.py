@@ -599,9 +599,9 @@ async def postsosluck(message):
             if roll[0] < smallpool[0]:
                 smallpool = roll
 
-        diceperavg = dicecount/rollscount
-        succavg = succtotal/rollscount
-        tnavg = tntotal/rollscount
+        diceperavg = round(dicecount/rollscount,1)
+        succavg = round(succtotal/rollscount)
+        tnavg = round(tntotal/rollscount,1)
         luckavg = lucktotal/rollscount
 
         msg.append(str(user[0].mention) + ' stats:\n' +
