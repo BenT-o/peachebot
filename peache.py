@@ -4,6 +4,7 @@ import re
 import random
 import math
 import config
+import datetime
 
 TOKEN = config.bot["TOKEN"]
 
@@ -63,6 +64,14 @@ async def on_message(message):
     elif message.author.id == 201040951211327488 and gagfred:
         await message.delete()
     # </editor-fold>
+
+    elif message.content.startswith('!boot'):
+        will_bday = datetime.datetime(2024, 10, 31)
+        hours, minutes, seconds = await seconds_convert((will_bday - datetime.datetime.now()))
+        msg = ('Hello {0.author.mention}! It is **' + str(int(hours)) + ' hours, ' + str(int(minutes)) + ' minutes and '
+               + str(seconds) + ' seconds** until Will\'s birthday!'.format(message)).format(message)
+        await message.channel.send(msg)
+
 
     # <editor-fold desc="Gag Fred Command">
     elif message.content.startswith('!gagfred'):
@@ -615,5 +624,17 @@ async def postsosluck(message):
 
     for m in msg:
         await message.channel.send(m)
+
+
+async def seconds_convert(timeuntil):
+    days = timeuntil.days
+    seconds = timeuntil.seconds
+    t_seconds = seconds % 60
+    t_minutes = (seconds - t_seconds)/60
+    t_hours = ((t_minutes - (t_minutes % 60))/60) + (days*24)
+    t_minutes = t_minutes % 60
+
+    return t_hours, t_minutes, t_seconds
+
 
 client.run(TOKEN)
