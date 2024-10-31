@@ -3,20 +3,27 @@ import discord
 import re
 import random
 import math
+import config
+import datetime
 
-TOKEN = 'NDY2NjYzNjI0MjM3MzgzNjgw.W0ZEXg.wwljGcx0KuQBfEyiWxhTRf_OO-g'
+TOKEN = config.bot["TOKEN"]
 
 intents = discord.Intents.all()
 intents.messages = True
 client = discord.Client(intents=intents)
 
+# Setting up global variables
 global svmode
 global chart
 global gagfred
+global users
 svmode = False
 chart = 0
 gagfred = False
+users = []
+sos_users = []
 
+# Setting up global regex patterns for parsing rolls
 global regex_any_roll
 global regex_roll
 global regex_with_text
@@ -25,32 +32,48 @@ regex_roll = re.compile('([+-]? *\d* *d *\d+)( *[kd][hl]? *\d+)?')
 regex_mod = re.compile('[\+\-] *\d+')
 regex_adv = re.compile(' *[kd][hl] *\d*')
 
+
+# bot login
 @client.event
 async def on_ready():
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
     print('------')
+    loginMessage = f"```peachebot online\nlogged in as: {client.user.name}\nbot user id: {client.user.id}```"
+    await client.get_channel(config.bot["LogChannel"]).send(loginMessage)
 
+
+# When a message is received
 @client.event
 # <editor-fold desc="On Message...">
 async def on_message(message):
     global svmode
     global chart
     global gagfred
+    global users
     global regex_any_roll
     global regex_roll
     global regex_mod
+
     # we do not want the bot to reply to itself
     if message.author == client.user:
         return
 
-    # <editor-fold desc="Gag Fred">
+    # <editor-fold desc="Gag Fred Command">
     elif message.author.id == 201040951211327488 and gagfred:
         await message.delete()
     # </editor-fold>
 
-    # <editor-fold desc="gagfred command">
+    elif message.content.startswith('!boot'):
+        will_bday = datetime.datetime(2024, 10, 31)
+        hours, minutes, seconds = await seconds_convert((will_bday - datetime.datetime.now()))
+        msg = ('Hello {0.author.mention}! It is **' + str(int(hours)) + ' hours, ' + str(int(minutes)) + ' minutes and '
+               + str(seconds) + ' seconds** until Will\'s birthday!'.format(message)).format(message)
+        await message.channel.send(msg)
+
+
+    # <editor-fold desc="Gag Fred Command">
     elif message.content.startswith('!gagfred'):
         if gagfred:
             gagfred = False
@@ -157,27 +180,48 @@ async def on_message(message):
         print("Chart value is now: " + str(chart))
     # </editor-fold>
 
+    # <editor-fold desc="Stats Command">
+    elif message.content.startswith('!stats'):
+        await postluck(message, users)
+    # </editor-fold>
+
+    # <editor-fold desc="SoS Stats Command">
+    elif message.content.startswith('!sos'):
+        await postsosluck(message)
+    # </editor-fold>
+
+    # <editor-fold desc="Stats Debug Command">
+    elif message.content.startswith('!debug'):
+        await message.channel.send('There\'s nothing to debug right now, you berk.')
+    # </editor-fold>
+
 # </editor-fold>
 
 
+# Roll function
 async def roll(fullroll, message):
     # Separate components of the roll
-    print("FULLROLL = " + fullroll)
     roll_dice = re.findall(regex_roll, fullroll)
-    print("ROLL_DICE = ")
-    print(roll_dice)
     fullroll = re.sub(regex_roll, '', fullroll)
-    print("FULLROLL = " + fullroll)
     # Extract mods
     roll_mod = re.findall(regex_mod, fullroll)
-    print("ROLL MODS = ")
-    print(roll_mod)
     fullroll = re.sub(regex_mod, '', fullroll)
-    print("FULLROLL = " + fullroll)
 
     # Initialise the final array & total
     rolledarray = []
     total = 0
+
+    # Prep logging of rolls for stats
+    roller = message.author
+    userlist = []
+    for i in users:
+        userlist.append(i[0])
+    if roller in userlist:
+        userid = userlist.index(roller)
+    else:
+        users.append([roller])
+        userid = len(users)-1
+
     # Prep rolled array
     for roll in roll_dice:
         splitroll = re.split(r'd', roll[0])
@@ -205,22 +249,22 @@ async def roll(fullroll, message):
             if is_neg:
                 x = -random.randint(1, die_s)
                 total = total + x
-                if x == die_s:
-                    rolls.append(f'__{x}__')
-                else:
-                    rolls.append(x)
+                rolls.append(x)
+                users[userid].append([x, die_s])
             else:
                 x = random.randint(1, die_s)
                 total = total + x
-                if x == die_s:
-                    rolls.append(f'__{x}__')
-                else:
-                    rolls.append(x)
+                rolls.append(x)
+                users[userid].append([x, die_s])
             die_c = die_c - 1
         print(rolls)
 
         if roll[1] == "":
-            rolledarray.append(str(rolls))
+            for i in range(len(rolls)):
+                if rolls[i] == die_s:
+                    rolls[i] = f"__{rolls[i]}__"
+            else:
+                rolledarray.append(str(rolls))
         else:
             advrollmod_type = roll[1][:2]
             print("advrollmod_type = " + advrollmod_type)
@@ -246,7 +290,14 @@ async def roll(fullroll, message):
                         total = total - d
                         rolls[rolls.index(d)] = "~~" + str(rolls[rolls.index(d)]) + "~~"
                         break
-            rolledarray.append(str(rolls))
+            newrolls = []
+            for x in rolls:
+                x_int = int(re.sub(r'~', '', str(x)))
+                if x_int == die_s:
+                    newrolls.append(f'__{x}__')
+                else:
+                    newrolls.append(x)
+            rolledarray.append(str(newrolls))
 
     mod = 0
     for x in roll_mod:
@@ -258,9 +309,10 @@ async def roll(fullroll, message):
     total = total+mod
 
     print(rolledarray)
-    #print('MOD: ' + str(mod))
+    print('MOD: ' + str(mod))
     print('TOTAL: ' + str(total))
     print("-------")
+    print(f'USER LIST = {users}')
 
     prettystring = ''
     for i in range(rolledarray.__len__()):
@@ -274,7 +326,7 @@ async def roll(fullroll, message):
     elif mod > 0:
         prettystring = prettystring + '+ ' + str(mod)
     prettystring = re.sub(r'\'', '', prettystring)
-    if re.search(r'__\d+__', prettystring):
+    if re.search(r'__\d+__', prettystring) and die_s == 20 and total-mod == 20:
         if fullroll.__len__() > 0:
             output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring + '\n :star2: **A CRITICAL HIT, HUZZAH!** :star2:'
         else:
@@ -284,6 +336,7 @@ async def roll(fullroll, message):
             output = message.author.mention + ' rolled **' + str(total) + '**! : ' + fullroll + '\n' + prettystring
         else:
             output = message.author.mention + ' rolled **' + str(total) + '**!\n' + prettystring
+
     await message.channel.send(output)
 
 
@@ -291,11 +344,23 @@ async def pool(fullroll, message):
     # split roll into parts
     targetparts = re.split("[<>]", fullroll)
     diceparts = re.split("d", targetparts[0])
+    trailing = re.sub(regex_any_roll, '', fullroll)
 
     # assign parts to function
     dicecount = int(diceparts[0])
     dicesize = int(diceparts[1])
-    target = int(targetparts[1])
+    target = int(re.findall(r'\d+', targetparts[1])[0])
+
+    # Prep logging of rolls for stats
+    roller = message.author
+    userlist = []
+    for i in sos_users:
+        userlist.append(i[0])
+    if roller in userlist:
+        userid = userlist.index(roller)
+    else:
+        sos_users.append([roller])
+        userid = len(sos_users) - 1
 
     # create array for rolls and number of successes
     rolledarray = []
@@ -304,15 +369,17 @@ async def pool(fullroll, message):
     for i in range(abs(int(dicecount))):
         roll = (random.randint(1, dicesize))
         rolledarray.append(roll)
-
-    if ">" in fullroll:
-        for r in rolledarray:
-            if r >= target:
+        if ">" in fullroll:
+            if roll >= target:
                 succ = succ+1
-    elif "<" in fullroll:
-        for r in rolledarray:
-            if r <= target:
+        elif "<" in fullroll:
+            if roll <= target:
                 succ = succ+1
+    print(dicesize)
+    if dicesize == 10:
+        expsucc = dicecount*(((10-target)+1)/10)
+        luckscore = ((succ/expsucc)*100)-100
+        sos_users[userid].append([dicecount, succ, target, luckscore])
 
     print(rolledarray)
     print('TARGET: ' + str(target))
@@ -322,15 +389,37 @@ async def pool(fullroll, message):
     prettystring = '['
     for i in range(rolledarray.__len__()):
         if i == 0:
-            prettystring = prettystring + str(rolledarray[i])
+            if ">" in fullroll:
+                if rolledarray[i] >= target:
+                    prettystring = prettystring + f'**{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f'{rolledarray[i]}'
+            elif "<" in fullroll:
+                if rolledarray[i] <= target:
+                    prettystring = prettystring + f'**{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f'{rolledarray[i]}'
         else:
-            prettystring = prettystring + ', ' + str(rolledarray[i])
+            if ">" in fullroll:
+                if rolledarray[i] >= target:
+                    prettystring = prettystring + f', **{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f', {rolledarray[i]}'
+            elif "<" in fullroll:
+                if rolledarray[i] <= target:
+                    prettystring = prettystring + f', **{rolledarray[i]}**'
+                else:
+                    prettystring = prettystring + f', {rolledarray[i]}'
     prettystring = prettystring + '] '
-    output = message.author.mention + ' rolled **' + str(succ) + '** successes!\n' + prettystring
+    if len(trailing) >= 2:
+        output = f'{message.author.mention} rolled **{succ}** successes! __{trailing}__\n {prettystring}'
+    else:
+        output = f'{message.author.mention} rolled **{succ}** successes!\n {prettystring}'
     await message.channel.send(output)
 
+
 async def dhroll(fullroll, message):
-    #split roll into parts
+    # split roll into parts
     diceparts = re.split("<", fullroll)
 
     # assign parts to function
@@ -362,6 +451,7 @@ async def dhroll(fullroll, message):
         output = message.author.mention + ' failed with **' + str(dos) + '** DoF!\n' + prettystring
 
     await message.channel.send(output)
+
 
 async def svroll(fullroll, message):
     # split roll into parts
@@ -422,6 +512,129 @@ async def svroll(fullroll, message):
 #        output = message.author.mention + ' *FAILED**!\n' + prettystring
     output = message.author.mention + 'rolled: \n' + prettystring
     await message.channel.send(output)
+
+
+async def postluck(message, list):
+    msg = []
+    for user in list:
+        rolls = user[1:]
+        diecount = len(user[1:])
+        d20rolls = []
+        bestroll = [0, 999]
+        worstroll = [999, 1]
+        bestd20 = 0
+        worstd20 = 21
+        allper = []
+        maxcount = 0
+        mincount = 0
+        for rollpair in rolls:
+            rollper = rollpair[0]/rollpair[1]
+            allper.append(rollper*100)
+            # Checking for best roll
+            # Checking if roll is better by proportion
+            if rollper > bestroll[0]/bestroll[1]:
+                bestroll = rollpair
+            # Checking if roll is same by proportion but larger die (considered better roll)
+            elif rollper == bestroll[0]/bestroll[1]:
+                if rollpair[1] > bestroll[1]:
+                    bestroll = rollpair
+            # In all other cases, bestroll remains unchanged
+
+            # Checking for worst roll
+            # Checking if roll is worse by proportion
+            if rollper < worstroll[0]/worstroll[1]:
+                worstroll = rollpair
+            # Checking if roll is the same by proportion but larger die
+            elif rollper == worstroll[0]/worstroll[1]:
+                if rollpair[1] > worstroll[1]:
+                    worstroll = rollpair
+            # In all other cases, worstroll remains unchanged
+
+            if rollpair[1] == 20:
+                if rollpair[0] > bestd20:
+                    bestd20 = rollpair[0]
+                if rollpair[0] < worstd20:
+                    worstd20 = rollpair[0]
+                d20rolls.append(rollpair[0])
+
+            if rollpair[0] == rollpair[1]:
+                maxcount = maxcount+1
+            if rollpair[0] == 1:
+                mincount = mincount+1
+        nat20 = d20rolls.count(20)
+        nat1 = d20rolls.count(1)
+        averageper = sum(allper)/diecount
+        average = sum(d20rolls)/len(d20rolls)
+        msg.append(str(user[0].mention) + ' stats:' + '\n' +
+                   f'You rolled a total of **{diecount}** dice.\n' +
+                   f'On average you rolled in {round(averageper,2)} percentile on all of your dice.\n' +
+                   f'Your best roll was a {bestroll[0]} on a d{bestroll[1]} ({round((bestroll[0]/bestroll[1])*100,2)} percentile)\n' +
+                   f'Your worst roll was a {worstroll[0]} on a d{worstroll[1]} ({round((worstroll[0]/worstroll[1])*100,2)} percentile)\n' +
+                   f'You rolled maximum on {maxcount} die.\n' +
+                   f'You rolled minimum on {mincount} die.\n\n' +
+                   f'Total number of d20s rolled: **{len(d20rolls)}**\n' +
+                   f'Your average on all of these was {round(average,2)}\n' +
+                   f'Your best roll on a d20 was {bestd20}\n' +
+                   f'Your worst roll on a d20 was {worstd20}\n' +
+                   f'You rolled {nat20} nat 20s and {nat1} nat 1s.')
+    for m in msg:
+        await message.channel.send(m)
+
+
+async def postsosluck(message):
+    msg = []
+    for user in sos_users:
+        rolls = user[1:]
+        rollscount = len(user[1:])
+        dicecount = 0
+        succtotal = 0
+        tntotal = 0
+        lucktotal = 0
+        bestluck = [0, 0, 0, -9999]
+        worstluck = [0, 0, 0, 9999]
+        bigpool = [0, 0, 0, 0]
+        smallpool = [9999, 0, 0, 0]
+        for roll in rolls:
+            dicecount = dicecount + roll[0]
+            succtotal = succtotal + roll[1]
+            tntotal = tntotal + roll[2]
+            lucktotal = lucktotal + roll[3]
+            if roll[3] > bestluck[3]:
+                bestluck = roll
+            if roll[3] < worstluck[3]:
+                worstluck = roll
+            if roll[0] > bigpool[0]:
+                bigpool = roll
+            if roll[0] < smallpool[0]:
+                smallpool = roll
+
+        diceperavg = round(dicecount/rollscount,1)
+        succavg = round(succtotal/rollscount)
+        tnavg = round(tntotal/rollscount,1)
+        luckavg = lucktotal/rollscount
+
+        msg.append(str(user[0].mention) + ' stats:\n' +
+                   f'You made {rollscount} checks with {dicecount} total die.\n\n' +
+                   f'On average you rolled {diceperavg} dice and got {succavg} successes, attempting to beat an average TN of {tnavg}.\n\n' +
+                   f'Your largest dice pool was {bigpool[0]} dice at TN{bigpool[2]}, achieving {bigpool[1]} successes.\n' +
+                   f'Your smallest dice pool was {smallpool[0]} dice at TN{smallpool[2]}, achieving {smallpool[1]} successes.\n\n' +
+                   f'Your luckiest roll was achieving {bestluck[1]} successes with {bestluck[0]} dice at TN{bestluck[2]}: **{round(bestluck[3],2)}% lucky!**\n' +
+                   f'Your unluckiest roll was achieving {worstluck[1]} successes with {worstluck[0]} dice at TN{worstluck[2]}: **{round(worstluck[3],2)}% lucky.**\n\n' +
+                   f'Your overall Luck was **{round(luckavg,2)}%!**')
+
+    for m in msg:
+        await message.channel.send(m)
+
+
+async def seconds_convert(timeuntil):
+    days = timeuntil.days
+    seconds = timeuntil.seconds
+    t_seconds = seconds % 60
+    t_minutes = (seconds - t_seconds)/60
+    t_hours = ((t_minutes - (t_minutes % 60))/60) + (days*24)
+    t_minutes = t_minutes % 60
+
+    return t_hours, t_minutes, t_seconds
 
 
 client.run(TOKEN)
