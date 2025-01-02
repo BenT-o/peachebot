@@ -1,4 +1,0 @@
-bot = {
-    "TOKEN": 'NDY2NjYzNjI0MjM3MzgzNjgw.GB2p_j.2c9cqVGo5ejOVZrz7lbSp8MmKi0r14pVzrQmLM',
-    "LogChannel": 1154039671026896938,
-}

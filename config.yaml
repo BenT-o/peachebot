@@ -1,3 +1,4 @@
 bot:
-  token: 'NDY2NjYzNjI0MjM3MzgzNjgw.GB2p_j.2c9cqVGo5ejOVZrz7lbSp8MmKi0r14pVzrQmLM'
-  log_channel: 1154039671026896938
+  TOKEN: 'NDY2NjYzNjI0MjM3MzgzNjgw.GB2p_j.2c9cqVGo5ejOVZrz7lbSp8MmKi0r14pVzrQmLM'
+  LOG_CHANNEL: 1154039671026896938
+  LOG_FILE: ''
