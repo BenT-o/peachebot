@@ -21,7 +21,9 @@ def parse_roll_string(roll):
 
         rolls = roll_dice(die_c, die_s)
 
-        pool_roll(rolls, tar_type, tn)
+        pool_dict = pool_roll(rolls, tar_type, tn)
+
+        return pool_dict
 
     else:
             # non pool stuff
@@ -51,3 +53,11 @@ def pool_roll(rolls, tar_type, tn):
             if rolls[i] == tn:
                 succ_count += 1
                 rolls_pretty[i] = str(f'**{rolls_pretty[i]}**')
+
+    pool_dict = {
+        "rolls_int": rolls,
+        "rolls_str": rolls_pretty,
+        "succ": succ_count
+    }
+
+    return pool_dict
