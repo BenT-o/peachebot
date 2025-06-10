@@ -1,6 +1,9 @@
 import random
 import re
 
+def check_dice_input(input):
+
+
 
 def parse_roll_string(roll):
     roll_expr = roll[0]

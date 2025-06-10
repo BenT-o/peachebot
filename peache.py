@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import yaml
 import re
+from utils.grammar import parse_roll_command
 
 # Load configuration from YAML file
 with open('config.yaml', 'r') as file:
@@ -18,26 +19,6 @@ intents.messages = True
 # Initialize bot
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-
-def parse_rolls(input):
-    rolls_unsplit = []
-    rolls = []
-    comsplit = input.split(',')
-    for command in comsplit:
-        command = command.strip()
-        match = re.match(r'(\d+)#(.*)', command)
-        if match:
-            count = int(match.group(1))
-            roll_expr = match.group(2).strip()
-            rolls_unsplit.extend([roll_expr] * count)
-        else:
-            rolls_unsplit.append(command)
-    for roll in rolls_unsplit:
-        text_split = re.match(r'((?:(?:\d+#)?[+-]?\d*d\d+(?:[kd][hl]\d+)?(?:[+-><=]\d+)*))\s*([^,]*)', roll)
-        rolls.append([text_split.group(1).strip(), text_split.group(2).strip()])
-    return rolls
-
-
 @bot.event
 async def on_ready():
     print('Logged in as')
@@ -51,8 +32,31 @@ async def on_ready():
 @bot.command()
 async def roll(ctx, *, input_command: str):
     """Command to handle dice rolls."""
-    rolls = parse_rolls(input_command)
-    await ctx.reply(f"Command received: {rolls}")
+    print(f"User Input: {input_command}")
+    try:
+        rolls = await parse_roll_command(input_command)
+
+        for r in rolls:
+            count = r['count']
+            expression = r['expression']
+            comment = r['comment']
+
+            if count < 1:
+                raise SyntaxError("You cannot roll a dice expression fewer than 1 times!")
+
+            print(f"Count: {count}")
+            print(f"Expression: {expression}")
+            print(f"Comment: {comment}")
+
+            #for count in range(count):
+            #    roll_these(expression, comment)
+
+        await ctx.reply(f"Command received: {rolls}")
+
+    except SyntaxError as e:
+        await ctx.reply(f"Oops! Syntax Error Detected: {e}")
+
+
 
 if __name__ == "__main__":
     bot.run(TOKEN)
