@@ -7,12 +7,9 @@ ParserElement.enablePackrat()
 
 # --- Basic tokens ---
 integer = Word(nums)
-dice_count = Optional(integer, default="1")
-dice_sides = integer
-keepdrop = (oneOf("kh kl dh dl") + integer)
-dice = Combine(dice_count + "d" + dice_sides) + Optional(keepdrop)
-
-flatmod = Combine(Optional(oneOf("+ -")) + integer)
+keepdrop = (oneOf("kh kl dh dl") + integer("keepdrop_num"))
+dice = Optional(integer("count"), default="1") + Literal('d') + integer("sides") + Optional(keepdrop)
+flatmod = Combine(Optional(oneOf("+ -"), default="+") + integer)
 term = dice | flatmod
 
 # --- Expression grammar ---
