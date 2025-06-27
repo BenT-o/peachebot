@@ -29,7 +29,8 @@ def parse_roll_string(roll):
         return pool_dict
 
     else:
-            # non pool stuff
+        return None
+    # non pool stuff
 
 
 def roll_dice(count, size):
