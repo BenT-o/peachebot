@@ -51,6 +51,7 @@ async def on_message(message):
     global svmode
     global chart
     global gagfred
+
     global users
     global regex_any_roll
     global regex_roll
